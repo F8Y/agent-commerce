@@ -4,9 +4,15 @@
 
 model:
   provider: custom
-  # Имя модели у вашего провайдера. Адрес и ключ задаются в .env:
-  # OPENAI_BASE_URL и OPENAI_API_KEY.
-  default: "ai-sage/GigaChat3.5-432B-A28B-Reasoning"
+  # Имя модели у вашего провайдера.
+  default: "deepseek-ai/DeepSeek-V4-Pro"
+  # Адрес и ключ берутся из .env. Явное указание нужно, чтобы их видели и
+  # вспомогательные задачи Hermes (сжатие контекста, заголовки сессий и т.п.).
+  base_url: "${OPENAI_BASE_URL}"
+  api_key: "${OPENAI_API_KEY}"
+  # Окно контекста модели по документации провайдера. Без него Hermes
+  # подставляет 256 000 и может переполнить окно модели поменьше.
+  # context_length: 131072
 
 agent:
   # Потолок шагов на одно сообщение. Защищает от зацикливания в браузере.
@@ -19,11 +25,19 @@ agent:
     - delegation
     - image_gen
     - video_gen
+    # Встроенный браузер Hermes (в т.ч. browser_vault с паролями и картами) —
+    # браузер даёт Playwright MCP.
+    - browser
+    # Веб-поиск в этой сборке нестабилен, а модель с ним обходит marketplace и
+    # браузер. Товары ищем через marketplace, страницы смотрим через браузер.
+    - web
 
-browser:
-  # Chrome на хосте через CDP-мост (cdp-proxy/nginx.conf).
-  # Закомментируйте, чтобы откатиться на встроенный headless Chromium образа.
-  cdp_url: "ws://cdp-proxy:9222"
+tools:
+  tool_search:
+    # По умолчанию Hermes прячет инструменты MCP за tool_search / tool_call,
+    # и модель должна сначала их найти. У нас инструментов немного, поэтому
+    # выдаём их сразу: так модели проще и меньше лишних шагов.
+    enabled: "off"
 
 skills:
   # Агент не меняет скиллы молча: любая запись — только с подтверждения.
@@ -38,3 +52,15 @@ mcp_servers:
       X-MCP-Tenant: "gift-agent"
     connect_timeout: 30
     timeout: 120
+
+  # Браузер: Chrome на хосте через Playwright MCP -> cdp-proxy.
+  playwright:
+    url: "http://playwright:8931/mcp"
+    connect_timeout: 30
+    timeout: 120
+    tools:
+      # Произвольный код и загрузка файлов агенту не нужны.
+      exclude:
+        - browser_run_code_unsafe
+        - browser_file_upload
+        - browser_install

@@ -16,7 +16,8 @@ Telegram
 ┌───────────── docker compose ─────────────────────────────┐
 │ hermes        Hermes Agent: gateway, модель, скиллы      │
 │   ├─ MCP  ──► marketplace   ru-marketplace-mcp v2.7.0    │
-│   └─ CDP  ──► cdp-proxy ──┐ (nginx-мост к Chrome хоста)  │
+│   └─ MCP  ──► playwright ──► cdp-proxy ──┐               │
+│               (Playwright MCP)  (nginx)  │               │
 │ hermes-init   копирует config/SOUL/skills в том Hermes   │
 └───────────────────────────┼──────────────────────────────┘
                             ▼
@@ -26,10 +27,16 @@ Telegram
 ```
 
 - **hermes** — [Hermes Agent](https://github.com/NousResearch/hermes-agent),
-  официальный образ `nousresearch/hermes-agent`. Терминал и исполнение кода
-  отключены, скиллы агент без подтверждения не меняет.
+  официальный образ `nousresearch/hermes-agent`. Терминал, исполнение кода,
+  встроенный браузер и веб-поиск отключены, скиллы агент без подтверждения не
+  меняет.
 - **marketplace** — [ru-marketplace-mcp](https://github.com/Vladimir-Human/ru-marketplace-mcp):
   поиск, карточки, отзывы, сравнение цен. Собирается из тега `v2.7.0`.
+- **playwright** — [Playwright MCP](https://github.com/microsoft/playwright-mcp)
+  от Microsoft: браузерные инструменты агента (`browser_navigate`,
+  `browser_snapshot`, `browser_click`, `browser_evaluate`…). Подключается к Chrome
+  на хосте через `cdp-proxy`. Встроенный браузер Hermes отключён: в образе
+  `stable` его инструменты не появлялись даже с установленным `agent-browser`.
 - **cdp-proxy** — nginx, через который контейнеры достают до Chrome на хосте.
   Chrome пускает CDP только с `Host: localhost`, поэтому прокси подменяет заголовок
   и переписывает ws-ссылки (см. `cdp-proxy/nginx.conf`).
@@ -69,8 +76,9 @@ Telegram
    # мост до Chrome: в ответе должно быть ws://cdp-proxy:9222/devtools/browser/...
    docker compose exec cdp-proxy wget -qO- http://127.0.0.1:9222/json/version
 
-   # gateway и подключение MCP marketplace
-   docker compose logs -f hermes
+   # MCP-серверы видны Hermes
+   docker compose exec hermes hermes mcp test marketplace
+   docker compose exec hermes hermes mcp test playwright
    ```
    Затем написать боту: «подбери подарок до 3000 ₽ коллеге, который любит чай».
 
@@ -111,12 +119,13 @@ Telegram
 ## Структура
 
 ```
-docker-compose.yml          сервисы: hermes-init, hermes, marketplace, cdp-proxy
+docker-compose.yml          сервисы: hermes-init, hermes, marketplace, playwright, cdp-proxy
 .env.example                переменные окружения (шаблон)
 hermes/config.yaml          модель, отключённые инструменты, CDP, MCP
 hermes/SOUL.md              постоянные правила агента
 cdp-proxy/nginx.conf        мост контейнеры → Chrome на хосте
 scripts/start-chrome.*      запуск Chrome с отдельным профилем
+scripts/session-tools.py    разбор сессии: какие инструменты вызвал агент
 skills/gift-consultant/     маркетплейсы: подбор, сравнение, корзина
 skills/local-shops-cart/    местные магазины Хабаровска (Tilda, uniSiter)
 ```
@@ -131,13 +140,14 @@ or localhost`, через прокси работают `/json/version`, WebSock
 
 Собрано по документации, но целиком вживую ещё не запускалось:
 
-- [ ] Chrome на `127.0.0.1` хоста виден из контейнера через
-      `host.docker.internal` (Docker Desktop на Mac и на Windows).
-- [ ] Hermes принимает `browser.cdp_url: ws://cdp-proxy:9222`.
-- [ ] Hermes подставляет `${MARKETPLACE_MCP_TOKEN}` в заголовки MCP. Если в логах
-      `401` от marketplace — не подставляет.
-- [ ] Hermes подхватывает скиллы из вложенной папки `skills/gift-agent/`.
-- [ ] JS-рецепты Tilda работают через `browser_console` (`expression`).
+- [x] Chrome на `127.0.0.1` хоста виден из контейнера через
+      `host.docker.internal` — Docker Desktop на Mac (Windows — проверить).
+- [ ] Playwright MCP управляет Chrome хоста через `cdp-proxy`: вкладки
+      открываются в окне Chrome на хосте.
+- [x] Hermes подставляет `${MARKETPLACE_MCP_TOKEN}` в заголовки MCP
+      (marketplace отвечает `200` на `/mcp`).
+- [x] Hermes подхватывает скиллы из вложенной папки `skills/gift-agent/`.
+- [ ] JS-рецепты Tilda работают через `browser_evaluate`.
 - [ ] Адреса корзин WB, Ozon и Яндекс Маркета в `gift-consultant`.
 - [ ] Hermes и marketplace не мешают друг другу в одном Chrome. Если мешают —
       второй Chrome на порту 9223 для marketplace.
@@ -153,16 +163,17 @@ or localhost`, через прокси работают `/json/version`, WebSock
   (§2.1), убрать `uvx desktop-agent`, перенаправлять запросы про маркетплейсы в
   `gift-consultant`, в `tilda-add.js` ждать обновления `tcart` и сверять товар,
   в `unisiter-add.js` сверять счётчик корзины.
-- **Версии.** После первого удачного запуска закрепить `HERMES_TAG` на конкретный
-  тег.
+- **Версии.** После первого удачного запуска закрепить `HERMES_TAG` и
+  `PLAYWRIGHT_MCP_TAG` на конкретные теги.
 
 ## Если не работает
 
 | Симптом | Что делать |
 |---|---|
 | `wget` к `cdp-proxy` не отвечает | Chrome не запущен или порт 9222 занят: перезапустить `start-chrome` |
-| `Host header is specified and is not an IP address or localhost` | запрос идёт мимо `cdp-proxy`: проверить `cdp_url` и `CHROME_CDP_HOST` |
+| `Host header is specified and is not an IP address or localhost` | запрос идёт мимо `cdp-proxy`: проверить `--cdp-endpoint` у playwright и `CHROME_CDP_HOST` у marketplace |
 | `409 Conflict` в логах hermes | этот бот уже запущен где-то ещё |
 | `401` от marketplace | разные токены или Hermes не подставил `${...}` — сверить `.env` |
 | Агент просит войти или пройти капчу | сделать это руками в окне Chrome |
-| CDP-мост так и не заработал | закомментировать `browser.cdp_url` — Hermes возьмёт встроенный headless Chromium (окна на демо не будет, вход в аккаунты сложнее) |
+| Агент говорит «открыл», но в Chrome ничего нет | `docker compose exec -T hermes hermes sessions export - --format jsonl \| python3 scripts/session-tools.py` — какие инструменты он вызвал на самом деле |
+| `hermes mcp test playwright` не подключается | `docker compose logs playwright` — обычно Chrome не запущен или не отвечает `cdp-proxy` |

@@ -35,7 +35,7 @@ services:
         condition: service_completed_successfully
       marketplace:
         condition: service_started
-      cdp-proxy:
+      playwright:
         condition: service_started
     env_file: .env
     environment:
@@ -63,6 +63,29 @@ services:
       # Запасной уровень Ozon идёт через тот же Chrome на хосте.
       CHROME_CDP_HOST: cdp-proxy
       CHROME_CDP_PORT: "9222"
+    restart: unless-stopped
+
+  # Браузер для агента: официальный Playwright MCP, управляет Chrome на хосте через cdp-proxy.
+  # Встроенные браузерные инструменты Hermes в образе stable не заработали — см. README.
+  # Порт не опубликован: сервер видят только сервисы этого compose.
+  playwright:
+    image: mcr.microsoft.com/playwright/mcp:${PLAYWRIGHT_MCP_TAG:-latest}
+    entrypoint: ["node"]
+    command:
+      - /app/cli.js
+      - --cdp-endpoint
+      - http://cdp-proxy:9222
+      - --port
+      - "8931"
+      - --host
+      - 0.0.0.0
+      # Проверка заголовка Host входящих MCP-запросов. Сервис доступен только внутри
+      # сети compose, поэтому разрешаем любые имена (иначе Hermes по имени `playwright` отсекается).
+      - --allowed-hosts
+      - "*"
+    depends_on:
+      cdp-proxy:
+        condition: service_started
     restart: unless-stopped
 
   # Мост от контейнеров к Chrome на хосте (127.0.0.1:9222). Подробности — в nginx.conf.
