@@ -1,0 +1,40 @@
+# Конфиг Hermes для gift-agent.
+# При каждом `docker compose up` сервис hermes-init копирует этот файл в том
+# hermes-data (/opt/data/config.yaml). Править здесь, а не внутри контейнера.
+
+model:
+  provider: custom
+  # Имя модели у вашего провайдера. Адрес и ключ задаются в .env:
+  # OPENAI_BASE_URL и OPENAI_API_KEY.
+  default: "CHANGE_ME"
+
+agent:
+  # Потолок шагов на одно сообщение. Защищает от зацикливания в браузере.
+  max_turns: 60
+  # Агенту с доступом к браузеру не нужны shell, исполнение кода и т.п.
+  disabled_toolsets:
+    - terminal
+    - code_execution
+    - computer_use
+    - delegation
+    - image_gen
+    - video_gen
+
+browser:
+  # Chrome на хосте через CDP-мост (cdp-proxy/nginx.conf).
+  # Закомментируйте, чтобы откатиться на встроенный headless Chromium образа.
+  cdp_url: "ws://cdp-proxy:9222"
+
+skills:
+  # Агент не меняет скиллы молча: любая запись — только с подтверждения.
+  write_approval: true
+  guard_agent_created: true
+
+mcp_servers:
+  marketplace:
+    url: "http://marketplace:8000/mcp"
+    headers:
+      Authorization: "Bearer ${MARKETPLACE_MCP_TOKEN}"
+      X-MCP-Tenant: "gift-agent"
+    connect_timeout: 30
+    timeout: 120

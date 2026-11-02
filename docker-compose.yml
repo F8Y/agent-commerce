@@ -1,0 +1,78 @@
+# Gift Agent — MVP. Запуск: см. README.md.
+# Chrome работает на хосте (настоящий браузер, домашний IP, видно окно на демо),
+# остальное — в контейнерах. Наружу не опубликован ни один порт.
+
+name: gift-agent
+
+services:
+  # Копирует конфиг, SOUL.md и скиллы из репозитория в том Hermes при каждом запуске.
+  # Источник правды — репозиторий; правки агента в этих файлах перезаписываются.
+  hermes-init:
+    image: alpine:3.20
+    volumes:
+      - hermes-data:/opt/data
+      - ./hermes:/src/hermes:ro
+      - ./skills:/src/skills:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        mkdir -p /opt/data/skills
+        cp /src/hermes/config.yaml /opt/data/config.yaml
+        cp /src/hermes/SOUL.md /opt/data/SOUL.md
+        rm -rf /opt/data/skills/gift-agent
+        cp -r /src/skills /opt/data/skills/gift-agent
+        chown 10000:10000 /opt/data
+        chown -R 10000:10000 /opt/data/config.yaml /opt/data/SOUL.md /opt/data/skills
+    restart: "no"
+
+  hermes:
+    image: nousresearch/hermes-agent:${HERMES_TAG:-stable}
+    command: ["gateway", "run"]
+    depends_on:
+      hermes-init:
+        condition: service_completed_successfully
+      marketplace:
+        condition: service_started
+      cdp-proxy:
+        condition: service_started
+    env_file: .env
+    environment:
+      HERMES_SKIP_CONFIG_MIGRATION: "1"
+    volumes:
+      # Именованный том, а не папка: на Windows bind-mount портит SQLite Hermes.
+      - hermes-data:/opt/data
+    shm_size: 1gb
+    restart: unless-stopped
+
+  # ru-marketplace-mcp: поиск и сравнение цен (WB, Яндекс Маркет, Ozon).
+  marketplace:
+    build:
+      context: https://github.com/Vladimir-Human/ru-marketplace-mcp.git#v2.7.0
+    image: ru-marketplace-mcp:2.7.0
+    command: ["marketplace-mcp"]
+    environment:
+      MCP_TRANSPORT: http
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: "8000"
+      MCP_HTTP_PATH: /mcp
+      MCP_HTTP_AUTH_TOKEN: ${MARKETPLACE_MCP_TOKEN:?Заполните MARKETPLACE_MCP_TOKEN в .env}
+      MCP_HTTP_TENANT_ID: gift-agent
+      MARKETPLACE_SOURCES: wildberries,yandex_market,ozon,compare
+      # Запасной уровень Ozon идёт через тот же Chrome на хосте.
+      CHROME_CDP_HOST: cdp-proxy
+      CHROME_CDP_PORT: "9222"
+    restart: unless-stopped
+
+  # Мост от контейнеров к Chrome на хосте (127.0.0.1:9222). Подробности — в nginx.conf.
+  cdp-proxy:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./cdp-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  hermes-data:
