@@ -3,14 +3,17 @@
 $ErrorActionPreference = "Stop"
 $port = 9222
 
+# Порядок поиска: CHROME_BIN → обычный Chrome → Chrome for Testing.
 $candidates = @(
+    $env:CHROME_BIN,
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
     "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
-    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
+    "$env:LOCALAPPDATA\Google\Chrome for Testing\Application\chrome.exe"
 )
 $chrome = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 if (-not $chrome) {
-    throw "Chrome не найден. Укажите путь к chrome.exe в scripts/start-chrome.ps1"
+    throw "Chrome не найден. Задайте путь: `$env:CHROME_BIN = 'C:\путь\к\chrome.exe'"
 }
 
 try {

@@ -6,7 +6,7 @@ model:
   provider: custom
   # Имя модели у вашего провайдера. Адрес и ключ задаются в .env:
   # OPENAI_BASE_URL и OPENAI_API_KEY.
-  default: "CHANGE_ME"
+  default: "ai-sage/GigaChat3.5-432B-A28B-Reasoning"
 
 agent:
   # Потолок шагов на одно сообщение. Защищает от зацикливания в браузере.
