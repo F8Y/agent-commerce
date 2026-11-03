@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Compact view of tool calls from `hermes sessions export` JSONL (stdin).
 
-Usage:
+By default shows only the most recent session. Usage:
   docker compose exec -T hermes hermes sessions export - --format jsonl \
-    | python3 scripts/session-tools.py [--last N]
+    | python3 scripts/session-tools.py [--last N] [--all]
 """
 import json
 import sys
 
 MAX_LEN = 160
+TIME_HINTS = ("updated", "last_active", "ended", "started", "created", "timestamp")
 
 
 def short(value) -> str:
@@ -37,18 +38,39 @@ def walk(node, out: list) -> None:
             walk(item, out)
 
 
+def session_time(session: dict) -> str:
+    """Latest top-level timestamp-like value as a sortable string ('' if none)."""
+    stamps = [str(v) for k, v in session.items()
+              if isinstance(v, (str, int, float)) and any(h in k.lower() for h in TIME_HINTS)]
+    return max(stamps) if stamps else ""
+
+
 def main() -> None:
-    last = 40
-    if "--last" in sys.argv:
-        last = int(sys.argv[sys.argv.index("--last") + 1])
-    lines: list = []
+    args = sys.argv[1:]
+    last = int(args[args.index("--last") + 1]) if "--last" in args else 40
+    sessions = []
     for raw in sys.stdin:
         raw = raw.strip()
         if raw:
             try:
-                walk(json.loads(raw), lines)
+                sessions.append(json.loads(raw))
             except json.JSONDecodeError:
                 continue
+    if not sessions:
+        print("Сессий не найдено")
+        return
+
+    if "--all" not in args:
+        # Hermes exports newest first; prefer an explicit timestamp when present.
+        timed = [s for s in sessions if isinstance(s, dict) and session_time(s)]
+        sessions = [max(timed, key=session_time)] if timed else sessions[:1]
+
+    lines: list = []
+    for i, session in enumerate(sessions):
+        if len(sessions) > 1:
+            sid = session.get("id") or session.get("session_id") if isinstance(session, dict) else None
+            lines.append(f"===== session {i + 1}" + (f" ({sid})" if sid else ""))
+        walk(session, lines)
     print("\n".join(lines[-last:]) if lines else "Вызовов инструментов не найдено")
 
 

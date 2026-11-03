@@ -29,6 +29,10 @@ Start-Process -FilePath $chrome -ArgumentList @(
     "--remote-debugging-port=$port",
     "--user-data-dir=`"$profileDir`"",
     "--no-first-run",
-    "--no-default-browser-check"
+    "--no-default-browser-check",
+    "--window-size=1440,900",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling"
 )
 Write-Host "Chrome запущен: профиль $profileDir, CDP на 127.0.0.1:$port"

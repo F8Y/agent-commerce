@@ -1,0 +1,6 @@
+name: checkout-guard
+version: 0.1.0
+description: "Human approval (Telegram buttons) before browser actions that can place an order or pay; hard block on entering card numbers."
+author: "gift-agent"
+provides_hooks:
+  - pre_tool_call

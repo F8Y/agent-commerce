@@ -40,11 +40,16 @@ if curl -fsS "http://127.0.0.1:${PORT}/json/version" >/dev/null 2>&1; then
 fi
 
 mkdir -p "$PROFILE_DIR"
+# Одинаковый размер окна у всех и без «усыпления» фонового окна агента.
 "$CHROME" \
   --remote-debugging-port="$PORT" \
   --user-data-dir="$PROFILE_DIR" \
   --no-first-run \
   --no-default-browser-check \
+  --window-size=1440,900 \
+  --disable-backgrounding-occluded-windows \
+  --disable-renderer-backgrounding \
+  --disable-background-timer-throttling \
   >/dev/null 2>&1 &
 
 echo "Запущен: $CHROME"

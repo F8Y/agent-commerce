@@ -5,7 +5,7 @@
 name: gift-agent
 
 services:
-  # Копирует конфиг, SOUL.md и скиллы из репозитория в том Hermes при каждом запуске.
+  # Копирует конфиг, SOUL.md, скиллы и плагин checkout-guard из репозитория в том Hermes при каждом запуске.
   # Источник правды — репозиторий; правки агента в этих файлах перезаписываются.
   hermes-init:
     image: alpine:3.20
@@ -23,8 +23,11 @@ services:
         cp /src/hermes/SOUL.md /opt/data/SOUL.md
         rm -rf /opt/data/skills/gift-agent
         cp -r /src/skills /opt/data/skills/gift-agent
+        mkdir -p /opt/data/plugins
+        rm -rf /opt/data/plugins/checkout-guard
+        cp -r /src/hermes/plugins/checkout-guard /opt/data/plugins/checkout-guard
         chown 10000:10000 /opt/data
-        chown -R 10000:10000 /opt/data/config.yaml /opt/data/SOUL.md /opt/data/skills
+        chown -R 10000:10000 /opt/data/config.yaml /opt/data/SOUL.md /opt/data/skills /opt/data/plugins
     restart: "no"
 
   hermes:
@@ -83,6 +86,11 @@ services:
       # сети compose, поэтому разрешаем любые имена (иначе Hermes по имени `playwright` отсекается).
       - --allowed-hosts
       - "*"
+      # Не прикладывать полный снимок страницы к ответу каждого действия:
+      # агент ищет элементы через browser_find и запрашивает снимок сам, когда нужно.
+      # Главная экономия токенов: снимок страницы WB — десятки тысяч токенов.
+      - --snapshot-mode
+      - none
     depends_on:
       cdp-proxy:
         condition: service_started
