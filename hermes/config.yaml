@@ -57,6 +57,10 @@ plugins:
   enabled:
     - checkout-guard
 
+display:
+  # Язык служебных сообщений Hermes (запрос подтверждения, таймауты).
+  language: ru
+
 approvals:
   # Сколько ждать ответа на кнопки подтверждения. Нет ответа = отказ.
   timeout: 600

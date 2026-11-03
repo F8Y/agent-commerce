@@ -35,8 +35,10 @@ GUARDED_SUFFIXES = (
 # checkout page) intentionally does not match: opening the checkout page is safe.
 FINAL_ACTION_PHRASES = (
     "оформить заказ",
+    "оформить",
     "подтвердить заказ",
     "отправить заказ",
+    "отправить",
     "заказать",
     "оплатить",
     "перейти к оплате",
