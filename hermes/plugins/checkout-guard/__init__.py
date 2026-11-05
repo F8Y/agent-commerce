@@ -6,6 +6,13 @@ The model cannot skip this: Hermes runs pre_tool_call before every tool call.
   {"action": "approve"}: Hermes asks the user with inline buttons in Telegram;
   deny or timeout blocks the call.
 * Card numbers in typed or evaluated text -> {"action": "block"}.
+  Only browser_click (and browser_type with submit=true) can reach the user's
+  approval: the prompt shows the button text, so the user sees what they confirm.
+* browser_evaluate whose source mentions a final button or submits a form ->
+  block: final buttons are pressed with browser_click only (real click, readable
+  prompt), never from JavaScript.
+* Final phrases inside typed text (a comment "заказать к 9 утра") are not clicks
+  and pass.
 * browser_click without a human-readable `element` -> {"action": "block"} with a
   hint, so every click states what it presses and the phrase check above works.
 * browser_evaluate reading document.cookie or calling an absolute external URL
@@ -138,18 +145,37 @@ def _on_pre_tool_call(tool_name: str = "", args: Any = None, **_: Any) -> Option
                            "адресам. Пользуйся данными самой страницы или инструментами marketplace.",
             }
 
-    if suffix == "browser_click" and not str(args.get("element") or "").strip():
-        return {
-            "action": "block",
-            "message": "checkout-guard: укажи в `element` видимый текст кнопки или ссылки "
-                       "(например «В корзину») и повтори клик.",
-        }
+    element = str(args.get("element") or "").strip()
 
-    phrase = _matched_phrase(text)
-    if phrase is None:
+    if suffix == "browser_click":
+        if not element:
+            return {
+                "action": "block",
+                "message": "checkout-guard: укажи в `element` видимый текст кнопки или ссылки "
+                           "(например «В корзину») и повтори клик.",
+            }
+        phrase = _matched_phrase(text)
+        return _approval(element or phrase) if phrase else None
+
+    if suffix == "browser_evaluate":
+        phrase = _matched_phrase(str(args.get("function") or ""))
+        if phrase:
+            return {
+                "action": "block",
+                "message": f"checkout-guard: «{phrase}» нельзя нажимать или отправлять из "
+                           "JavaScript. Найди кнопку через browser_find и нажми browser_click "
+                           "с её видимым текстом в `element` — система спросит пользователя.",
+            }
         return None
 
-    label = str(args.get("element") or "").strip() or phrase
+    if suffix == "browser_type" and args.get("submit"):
+        phrase = _matched_phrase(element)
+        return _approval(f"Enter в поле «{element}»") if phrase else None
+
+    return None
+
+
+def _approval(label: str) -> dict:
     return {
         "action": "approve",
         "message": f"Агент хочет нажать «{label[:80]}». Это может оформить заказ или списать деньги. "
