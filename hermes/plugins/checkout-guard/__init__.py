@@ -10,6 +10,8 @@ The model cannot skip this: Hermes runs pre_tool_call before every tool call.
   hint, so every click states what it presses and the phrase check above works.
 * browser_evaluate reading document.cookie or calling an absolute external URL
   (fetch, XHR, sendBeacon, WebSocket, image beacons, navigation) -> block.
+* The morekraba.shop franchise page is a lead form, not a checkout: navigating
+  there or clicking its "Франшиза" link -> block.
 
 Known limitation: the check trusts the `element` text the model writes and the
 JS source it sends; a mislabeled click is not caught. Covered by the skill rules
@@ -24,12 +26,18 @@ from typing import Any, Iterator, Optional
 # Playwright MCP tool names arrive prefixed (e.g. "mcp__playwright__browser_click").
 GUARDED_SUFFIXES = (
     "browser_click",
+    "browser_navigate",
     "browser_press_key",
     "browser_evaluate",
     "browser_fill_form",
     "browser_type",
     "browser_select_option",
 )
+
+# morekraba.shop: /franchise is a lead form for opening a franchise, never an
+# order form. The agent once submitted a cart order through it; block outright.
+FRANCHISE_URL = "morekraba.shop/franchise"
+FRANCHISE_LINK_TEXT = "франшиза"
 
 # Lowercase fragments of final order/payment controls. "К оформлению" (go to the
 # checkout page) intentionally does not match: opening the checkout page is safe.
@@ -116,6 +124,31 @@ def _on_pre_tool_call(tool_name: str = "", args: Any = None, **_: Any) -> Option
         return None
     args = args if isinstance(args, dict) else {}
     text = "\n".join(_strings(args))
+
+    lowered = text.lower()
+    if FRANCHISE_URL in lowered.replace("https://", "").replace("http://", ""):
+        return {
+            "action": "block",
+            "message": "checkout-guard: https://morekraba.shop/franchise — это заявка на "
+                       "открытие франшизы, а не заказ. Открой корзину "
+                       "https://morekraba.shop/#tcart и жми button.t-submit в "
+                       ".t706__cartpage-form-wrapper form.",
+        }
+    if suffix == "browser_navigate":
+        url = str(args.get("url") or "").strip().lower().split("?")[0].split("#")[0]
+        if url.rstrip("/").endswith("/franchise"):
+            return {
+                "action": "block",
+                "message": "checkout-guard: страница /franchise — форма заявки на франшизу, "
+                           "не оформление заказа. Для заказа открой "
+                           "https://morekraba.shop/#tcart.",
+            }
+    if suffix == "browser_click" and str(args.get("element") or "").strip().lower() == FRANCHISE_LINK_TEXT:
+        return {
+            "action": "block",
+            "message": "checkout-guard: ссылка «Франшиза» ведёт на форму франшизы. "
+                       "Для заказа открой https://morekraba.shop/#tcart.",
+        }
 
     if _has_card_number(text):
         return {
