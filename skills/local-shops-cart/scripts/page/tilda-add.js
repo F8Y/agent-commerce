@@ -36,6 +36,8 @@ async () => {
         matchesPage: !!expected && name.toLowerCase().includes(expected.toLowerCase().slice(0, 20)),
         items: qty(cart),
         total: cart.prodamount ?? cart.amount ?? cart.total ?? null,
+        price: last.amount ?? null,
+        options: last.options || [],
       };
     }
   }
