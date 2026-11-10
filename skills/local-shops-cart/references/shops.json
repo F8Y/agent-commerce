@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "updated": "2026-10-29",
+  "version": 7,
+  "updated": "2026-11-05",
   "city": "Хабаровск",
   "scope": "Только магазины, в которые агент умеет добавлять товар в корзину (проверено вживую)",
   "assortmentNote": "Реестр описывает категории и возможности магазина, а не полный каталог. Конкретный товар, наличие и цену агент проверяет на сайте перед тем, как называть.",
@@ -49,6 +49,43 @@
         "addSelector": "a.t-store__prod-popup__btn",
         "click": "element.click()"
       },
+      "checkout": {
+        "url": "https://morekraba.shop/#tcart",
+        "formSelector": ".t706__cartpage-form-wrapper form",
+        "submitSelector": ".t706__cartpage-form-wrapper form button.t-submit",
+        "submitText": "Оформить заказ",
+        "openFormSelector": ".t706__cartpage-open-form",
+        "openFormNote": "скрыта, когда форма заказа уже развёрнута — на #tcart она открыта сразу",
+        "fields": {
+          "name": "Имя",
+          "phone": "tildaspec-phone-part[]",
+          "delivery": "Radio",
+          "address": "Адрес доставки_2",
+          "comment": "Комментарий",
+          "packaging": "Упаковка",
+          "promo": "Промокод",
+          "consent": "Checkbox"
+        },
+        "deliveryOptions": [
+          "Доставка по городу",
+          "Самовывоз из магазина"
+        ],
+        "consentDefault": false,
+        "mustHaveFields": [
+          "Адрес доставки_2",
+          "Комментарий"
+        ],
+        "franchiseMarkers": [
+          "Способ связи",
+          "Input"
+        ],
+        "successMarkers": [
+          "Спасибо",
+          "номер заказа",
+          "корзина очистилась"
+        ],
+        "forbidden": "https://morekraba.shop/franchise"
+      },
       "checkoutFields": [
         "имя",
         "телефон",
@@ -61,9 +98,11 @@
       ],
       "constraints": [
         "менеджер подтверждает заказ по телефону",
-        "итоговая цена может измениться из-за веса или наличия"
+        "итоговая цена может измениться из-за веса или наличия",
+        "не открывать https://morekraba.shop/franchise — это заявка на франшизу, а не заказ",
+        "кнопка отправки — только button.t-submit в .t706__cartpage-form-wrapper form на #tcart"
       ],
-      "notes": "Проверено: JS-клик добавляет товар, корзина читается из tcart."
+      "notes": "Проверено: JS-клик добавляет товар, корзина читается из tcart. Заказ оформляется только на https://morekraba.shop/#tcart: форма уже открыта, галочку согласия нужно поставить вручную."
     },
     {
       "id": "myryba",
@@ -99,8 +138,35 @@
       },
       "cart": {
         "storage": "localStorage.tcart",
-        "addSelector": "a.t-btn.js-store",
+        "addSelector": "a.t-store__prod-popup__btn, a.t-store__card__btn",
         "click": "element.click()"
+      },
+      "checkout": {
+        "url": "https://myryba.ru/korzina",
+        "cartKind": "page",
+        "formSelector": ".t706__cartwin .t706__orderform form",
+        "submitSelector": ".t706__cartwin .t706__orderform form button.t-submit",
+        "submitText": "Оформить",
+        "formAlreadyOpen": true,
+        "fields": {
+          "phone": "tildaspec-phone-part[]",
+          "name": "Name",
+          "date": "Дата_доставки",
+          "time": "Время доставки",
+          "street": "Улица",
+          "house": "Дом",
+          "entrance": "Подъезд",
+          "floor": "Этаж",
+          "apartment": "Квартира",
+          "comment": "Комментарий",
+          "consent": "Checkbox"
+        },
+        "consentDefault": false,
+        "successMarkers": [
+          "сообщение об успехе",
+          "номер заказа",
+          "корзина очистилась"
+        ]
       },
       "checkoutFields": [
         "имя",
@@ -116,9 +182,11 @@
       ],
       "constraints": [
         "менеджер подтверждает заказ по телефону",
-        "цена может измениться из-за веса или наличия"
+        "цена может измениться из-за веса или наличия",
+        "кнопка отправки называется «Оформить» и находится на https://myryba.ru/korzina",
+        "иконка корзины в шапке скрыта — открывать /korzina напрямую"
       ],
-      "notes": "Проверено: JS-клик добавляет товар, счётчик корзины становится 1."
+      "notes": "Проверено: JS-клик по «Купить» добавляет товар, tcart.обновился; на /korzina форма уже развёрнута, полей 11 + согласие. Отправку не нажимали."
     },
     {
       "id": "sayflowers",
@@ -163,18 +231,117 @@
         "addSelector": "a.t-store__prod-popup__btn",
         "click": "element.click()"
       },
+      "productOptions": {
+        "where": ".t-store__product-snippet (карточка товара)",
+        "quantity": {
+          "type": "radio",
+          "name": "Количество",
+          "default": "первый вариант",
+          "exampleValues": [
+            "9 веток",
+            "11 веток",
+            "19 веток",
+            "25 веток"
+          ]
+        },
+        "extras": [
+          {
+            "label": "Добавить открытку?",
+            "type": "select",
+            "values": [
+              "Нет",
+              "Да (55 руб)"
+            ],
+            "default": "Нет"
+          },
+          {
+            "label": "Добавить транспортировочную коробку?",
+            "type": "select",
+            "values": [
+              "Нет",
+              "Да (440 руб)"
+            ],
+            "default": "Нет"
+          }
+        ],
+        "priceSelector": ".t-store__product-snippet .js-store-prod-price-val",
+        "selectedInCart": "products[].options[]",
+        "example": {
+          "name": "Букет нежных гвоздик",
+          "url": "https://sayflowers.ru/catalog/bukety/tproduct/112870417582-buket-nezhnih-gvozdik",
+          "priceLadder": {
+            "9 веток": 1770,
+            "11 веток": 2090,
+            "19 веток": 3535,
+            "25 веток": 4495
+          }
+        }
+      },
+      "checkout": {
+        "url": "https://sayflowers.ru/",
+        "cartKind": "popup",
+        "openCart": "document.querySelector('.t706__carticon').click()",
+        "openCartNote": "иконка видна только когда корзина не пуста; страницы корзины нет",
+        "formSelector": ".t706__cartwin .t706__orderform form",
+        "submitSelector": ".t706__cartwin .t706__orderform form button.t-submit",
+        "submitText": "Отправить заявку",
+        "conditionalFields": true,
+        "fillOrder": [
+          "Имя",
+          "tildaspec-phone-part[]",
+          "delivery",
+          "адрес/дата/время (появятся после выбора delivery)",
+          "Получатель",
+          "Бонусная",
+          "Согласие на обработку ПД"
+        ],
+        "fields": {
+          "name": "Имя",
+          "phone": "tildaspec-phone-part[]",
+          "delivery": "delivery",
+          "address": "delivery_address",
+          "comment": "Комментарий к заказу",
+          "date": "Когда доставить заказ?*",
+          "time": "Выберите время доставки*",
+          "pickupDate": "Дата самовывоза",
+          "pickupTime": "Время самовывоза",
+          "recipient": "Получатель",
+          "recipientName": "Имя получателя",
+          "recipientPhone": "tildaspec-phone-part[]",
+          "surprise": "Не предупреждать получателя",
+          "bonus": "Бонусная",
+          "consent": "Согласие на обработку ПД"
+        },
+        "deliveryOptions": [
+          "Нет, заберу в магазине (бесплатно)",
+          "Да (рассчитать стоимость доставки)"
+        ],
+        "bonusOption": "Не зарегистрирован(а), и не хочу проходить регистрацию",
+        "consentDefault": false,
+        "successMarkers": [
+          "сообщение об успехе",
+          "номер заказа"
+        ]
+      },
       "checkoutFields": [
         "имя",
         "телефон",
         "адрес или самовывоз",
+        "дата и время",
+        "получатель",
         "комментарий",
         "согласие"
       ],
       "constraints": [
+        "корзина — попап, страницы корзины нет: открывать через .t706__carticon",
+        "кнопка отправки называется «Отправить заявку»",
+        "поля условные: сначала delivery и Получатель, потом остальные",
+        "«точное время» и «нерабочее время» — платные опции, не выбирать без просьбы",
+        "количество цветов и доп. опции выбираются в карточке до добавления; в корзине они в products[].options[], а не в name",
         "отправку формы не тестировали",
         "ассортимент сезонный: часть букетов меняется"
       ],
-      "notes": "Проверено: «Яркий микс из роз» добавился, tcart.amount = 4 890 ₽."
+      "notes": "Проверено: «Композиция в мини тыкве» добавилась, tcart.prodamount = 2 800 ₽; «Букет нежных гвоздик» 19 веток + открытка = 3 590 ₽, options сохранены в tcart. На попапе корзины одна форма, кнопка «Отправить заявку»."
     },
     {
       "id": "fcska",

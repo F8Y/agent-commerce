@@ -11,6 +11,9 @@ The model cannot skip this: Hermes runs pre_tool_call before every tool call.
 * browser_evaluate reading document.cookie or calling an absolute external URL
   (fetch, XHR, sendBeacon, WebSocket, image beacons, navigation) -> block.
 
+Site-specific rules (which page is the real checkout, which link is a trap) live
+in the skill, not here: the guard stays a generic mechanism.
+
 Known limitation: the check trusts the `element` text the model writes and the
 JS source it sends; a mislabeled click is not caught. Covered by the skill rules
 and by keeping no saved card in the accounts.
