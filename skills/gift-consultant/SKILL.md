@@ -116,9 +116,9 @@ marketplace не ответил или нужны фильтры/сортиро�
   сужай `target` и `depth`.
 - `browser_click(target=ref, element="…")` — клик; в `element` точный видимый
   текст («В корзину», «Заказать»). Без `element` система отклонит.
-- `browser_type`, `browser_select_option`, `browser_fill_form` — ввод;
-  `browser_evaluate(function="() => …")` — JS на странице (рецепты Tilda из
-  `local-shops-cart`); `browser_tabs` — вкладки.
+- `browser_type`, `browser_select_option`, `browser_fill_form` — ввод; поле с
+  маской (телефон) при необходимости вводи посимвольно; `browser_evaluate(...)`
+  — JS на странице (рецепты Tilda из `local-shops-cart`); `browser_tabs` — вкладки.
 
 Гигиена, чтобы сайт не принял нас за бота:
 
