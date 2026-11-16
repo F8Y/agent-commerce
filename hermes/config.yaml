@@ -61,6 +61,15 @@ display:
   # Язык служебных сообщений Hermes (запрос подтверждения, таймауты).
   language: ru
 
+# Telegram command menu: show only /new and /resume. Other commands stay usable when typed.
+platforms:
+  telegram:
+    extra:
+      command_menu:
+        max_commands: 2
+        priority_mode: replace
+        priority: [new, resume]
+
 approvals:
   # Сколько ждать ответа на кнопки подтверждения. Нет ответа = отказ.
   timeout: 600
