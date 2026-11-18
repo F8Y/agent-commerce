@@ -147,7 +147,7 @@ cdp-proxy/nginx.conf        мост контейнеры → Chrome на хос
 scripts/start-chrome.*      запуск Chrome с отдельным профилем
 scripts/session-tools.py    разбор сессии: какие инструменты вызвал агент
 skills/gift-consultant/     маркетплейсы: подбор, сравнение, корзина
-skills/local-shops-cart/    местные магазины Хабаровска (Tilda, uniSiter)
+skills/local-shops-cart/    местные магазины Хабаровска (Tilda)
 skills/flowwow/             FlowWow: флористы и кондитерские Хабаровска, оплата СБП
 ```
 
@@ -175,7 +175,6 @@ or localhost`, через прокси работают `/json/version`, WebSock
   - [ ] «Рыба моя» (myryba.ru, Tilda)
   - [ ] «Море Краба» (morekraba.shop, Tilda)
   - [ ] «Скажи Цветами» (sayflowers.ru, Tilda, форма ещё не проверялась)
-  - [ ] «СКА-Хабаровск» (shop.fcska.ru, uniSiter)
 - [ ] FlowWow: вход руками в Chrome агента → адрес и время → карточка →
       корзина → оформление (получатель, почта, СБП) → «Оплатить» → кнопки
       подтверждения → **«Отклонить»**. Затем один раз «Одобрить»: агент присылает

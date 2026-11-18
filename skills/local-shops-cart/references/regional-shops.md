@@ -1,4 +1,4 @@
-# Региональные магазины: Tilda и uniSiter
+# Региональные магазины: Tilda
 
 Проверено вживую 2026-10 (Хабаровск). Задача — понять, можно ли добавить товар
 в корзину **без ручных кликов**, чтобы этим управлял ТГ-бот: пользователь пишет
@@ -9,7 +9,7 @@
 кнопками в Telegram (`checkout-guard`); порядок — `SKILL.md` §4. Карточные
 данные не вводим, онлайн-оплату не выбираем.
 
-Машиночитаемый реестр четырёх проверенных магазинов (категории, `addToCart`,
+Машиночитаемый реестр трёх проверенных магазинов (категории, `addToCart`,
 селекторы) — `shops.json` в этой же папке. Здесь — детали и рецепты площадок.
 
 ---
@@ -23,7 +23,6 @@
 | **morekraba.shop** | Tilda Store | ✅ JS-клик, `localStorage.tcart` | гостевая текстовая форма |
 | **myryba.ru** | Tilda Store | ✅ JS-клик, `localStorage.tcart` | гостевая текстовая форма |
 | **sayflowers.ru** | Tilda Store | ✅ JS-клик, `localStorage.tcart` | Tilda-форма (не заполняли) |
-| **shop.fcska.ru** (ФК «СКА-Хабаровск») | uniSiter | ✅ JS-клик, AJAX `ajax_buy.php` | ✅ гостевая форма |
 
 ---
 
@@ -95,73 +94,10 @@
 
 ---
 
-## 3. uniSiter (пример: shop.fcska.ru, ФК «СКА-Хабаровск»)
-
-Признаки: `/engine/public/`, `/kernel/js/`, `shop_current/shop.js`, `cartVersion`.
-
-### Добавление
-
-На странице товара основная кнопка — внутри формы:
-
-```html
-<form class="forms" action="./ajax_buy.php" method="post" data-form-name="AddToCart">
-  <input type="hidden" name="goods_id" value="150">
-  <input type="hidden" name="action" value="buy">
-  ...
-  <div id="buy_btn_cont"><input type="submit" value="Купить"></div>
-</form>
-```
-
-Клик:
-
-```js
-document.querySelector('form[action$="ajax_buy.php"] #buy_btn_cont input[type=submit]').click();
-```
-
-Грабля: в блоках «похожие товары» тоже есть `input.buy[data-goodsSubId]`, и они
-идут в DOM **раньше** основной кнопки. Если кликнуть первый `.buy`, в корзину
-попадёт товар из рекомендаций, а не текущий. Основную кнопку брать только из формы
-`ajax_buy.php`.
-
-Проверка результата:
-
-```js
-// счётчик в шапке
-document.getElementById('cart').innerText           // "1\nОформить заказ"
-// AJAX-фрагмент корзины
-await (await fetch('/shop/cart.php?ajax')).text()   // <strong>1</strong>
-// JSON со суммой
-await (await fetch('/shop/ajax_cart.php')).text()   // {"sum":2450,"count":1,...}
-```
-
-### Корзина и заказ
-
-`/shop/cart/` доступна **гостю**. Форма:
-
-| Поле | Смысл |
-|---|---|
-| `login` | имя |
-| `phone` | телефон (маска `+7 (___) ___-__-__`) |
-| `mail` | e-mail |
-| `address` | адрес доставки |
-| `extra` | комментарий |
-| `delivery_city`, `citySelect`, `post_code` | город и индекс |
-| `payment` | радио: карта / наличные / оплата на сайте |
-| `delivery` | радио: самовывоз (ул. Карла Маркса, 60/2) |
-
-Корзина серверная, привязана к cookies — нужен постоянный профиль браузера.
-
-Удаление тестовой позиции: ссылка «Удалить» на `/shop/cart/`.
-
----
-
-## 4. Выводы для ТГ-бота
+## 3. Выводы для ТГ-бота
 
 1. **Tilda** — самый переносимый вариант: корзина в `localStorage`, добавление
    одним `element.click()`, checkout — текстовая форма. Проверены
    morekraba.shop, myryba.ru, sayflowers.ru.
-2. **uniSiter (СКА)** — тоже полностью автоматизируется, включая гостевую форму
-   заказа. Один магазин, но с реальным checkout.
-3. Перед добавлением всегда читать корзину: повторный клик увеличивает количество.
-4. После проверок очищать тестовые корзины (Tilda — `localStorage`, uniSiter —
-   «Удалить» на `/shop/cart/`).
+2. Перед добавлением всегда читать корзину: повторный клик увеличивает количество.
+3. После проверок очищать тестовые корзины: `localStorage.removeItem('tcart')`.
